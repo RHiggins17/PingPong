@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<!--
+Name: Rachel Higgins
+Class: CS 4183 Video Game Design
+Semester: Fall 2017
+Professor: David Cline
+Assignment: Sprint 1
+Goal: Keep the ball from getting past the paddles for sixty seconds to win.
+Credits:
+		Music: from https://www.bensound.com/royalty-free-music/track/clear-day by Bensound Royalty-free music.
+		Bounce Sound Effect: from http://soundbible.com/1601-Mario-Jumping.html by Mike Koenig.
+ -->
+
+<!-- HTML HEAD ELEMENT - DEFINES CSS FOR THE PAGE -->
+<head>
+	<meta charset="utf-8">
+    <style>
+	    body { background-color: #002200; }
+	    h3,p { color: #FFFF00; }
+	    canvas { background-color: #000044; }
+	    #debugContainer { color: #FFFFFF; position: absolute; z-index: 100;}
+    </style>
+    <title>Ping Pong</title>
+</head>
+
+<!-- ==================================================================== -->
+
+<!-- HTML BODY TAG - DEFINES THE HTML LAYOUT FOR THE PAGE -->
+<body oncontextmenu="return false;">
+
+<!-- INCLUDE SCRIPTS -->
+<script src="../threejs/build/three.js"></script>
+<script src="gameEngine0.js"></script>
+
+<!-- GAME SPECIFIC INCLUDES -->
+<script src="pongData.js"></script>
+
+<!-- DEFINE LEFT DIV TAG - FOR DEBUG PRINTOUTS -->
+<div id="debugContainer">
+<pre id="debug"></pre>
+</div>
+
+<!-- MAKE CANVAS AND OTHER STARTING ELEMENTS  -->
+<center>
+	<br/>
+	<h3 id="scoreboard">Ping Pong: Keep the ball from leaving the screen for 60 seconds. Use A, Z Up Arrow, and Down Arrow to move the paddles. Score: 0.</h3>
+	<canvas id="canvas" width="800" height="500"></canvas>
+	<audio id="music"><source src="bensound-clearday.mp3"></source></audio>
+	<audio id="bounce"><source src="marioJump.wav"></source></audio>
+</center>
+
+
+<script>
+//----------------------------------------------------------------------//
+// THE MAIN CODE FOR THE GAME
+//----------------------------------------------------------------------//
+
+//Canvas, ball, and paddle objects are global variables to access them in various areas.
+var canvas;
+var ball;
+var rectRight;
+var rectLeft;
+//The ball's speed-related variables are global so current speed and direction
+//is maintained until changed by moveBall.
+var timer;
+var speed  = 0.2;
+var ballSpeedX = speed;
+var ballSpeedY = 0.0;
+var bally = 0.0;
+var ballx = -ballSpeedX;
+	
+	//Moves the rectangle up or stops it from leaving the upper canvas.
+	var moveRectUp = function(rect)
+    {
+		if (rect.position.y > 3.5)
+        {
+            rect.position.y -= 0.3;
+        }
+		else
+        {
+            rect.position.y += 0.3;
+        }
+		
+		console.log("move up");
+    }
+	//Moves the rectangle down or stops it from leaving the lower canvas.
+	var moveRectDown = function(rect)
+    {
+		if (rect.position.y < -3.5)
+        {
+            rect.position.y += 0.3;
+        }
+		else
+        {
+            rect.position.y -= 0.3;
+        }
+		
+		console.log("move down");
+    }
+	//Moves the ball in the xy-coordinate system based start and collision conditions.
+	var moveBall = function(ball, rectRight, rectLeft)
+    {
+		//Gets the h3 element and adds points to the score if the ball and a paddle collide.
+		var points = document.getElementById("scoreboard");
+		//If the ball hits the left paddle, it should move right. The equation gets the relative y position
+		//of the ball and paddle, normalizes it, and gets the angle to determine where ball should go.
+		if(collision(rectLeft, ball))
+        {
+			ballSpeedX = speed;
+			//alert("Collision on rectLeft occured!");
+			var relativeY = (rectLeft.position.y + (rectLeft.scale.y/2)) - ball.position.y;
+			var normalizedRelative = (relativeY/(rectLeft.scale.y/2));
+			var angle = normalizedRelative * (5 * Math.PI/12);
+			ballx = ballSpeedX*Math.cos(angle);
+			bally = ballSpeedX*(-Math.sin(angle));
+			ball.position.x += ballx;
+			ball.position.y += bally;
+			console.log("bounce ball");
+			var sound = document.getElementById("bounce");
+			sound.play();
+			gameState.score += 100;
+			points.innerHTML = "Ping Pong: Keep the ball from leaving the screen for 60 seconds. Use A, Z Up Arrow, and Down Arrow to move the paddles. Score: " + gameState.score;
+        }
+		//If the ball hits the right paddle, it should move left.  Equation is the same other than final signs.
+		else if(collision(rectRight, ball))
+        {
+			ballSpeedX = -speed;
+			//alert("Collision on rectRight occured!");
+			var relativeY = (rectRight.position.y + (rectRight.scale.y/2)) - ball.position.y;
+			var normalizedRelative = (relativeY/(rectLeft.scale.y/2));
+			var angle = normalizedRelative * (5 * Math.PI/12);
+			ballx = ballSpeedX*Math.cos(angle);
+			bally = ballSpeedX*(-Math.sin(angle));
+			ball.position.x += ballx;
+			ball.position.y += bally;
+			console.log("bounce ball");
+			var sound = document.getElementById("bounce");
+			sound.play();
+			gameState.score += 100;
+			points.innerHTML = "Ping Pong: Keep the ball from leaving the screen for 60 seconds. Use A, Z Up Arrow, and Down Arrow to move the paddles. Score: " + gameState.score;
+        }
+		//Again, the equation is reused.  This time it keeps the ball from leaving the upper canvas.
+		else if(ball.position.y > 3.5)
+		{
+			ballSpeedY = speed;
+		
+			var relativeY = (rectLeft.position.y + (rectLeft.scale.y/2)) - ball.position.y;
+			var normalizedRelative = (relativeY/(rectRight.scale.y/2));
+			var angle = normalizedRelative * (5 * Math.PI/12);
+			ballx = ballSpeedX*Math.cos(angle);
+			bally = ballSpeedY*(-Math.sin(angle));
+			ball.position.x += ballx;
+			ball.position.y += bally;
+			console.log("bounce ball");
+		}
+		//Same as a above for the lower canvas.
+		else if(ball.position.y < -3.0)
+		{
+			ballSpeedY = -speed;
+			
+			var relativeY = (rectRight.position.y + (rectRight.scale.y/2)) - ball.position.y;
+			var normalizedRelative = (relativeY/(rectLeft.scale.y/2));
+			var angle = normalizedRelative * (5 * Math.PI/12);
+			ballx = ballSpeedX*Math.cos(angle);
+			bally = ballSpeedY*(-Math.sin(angle));
+			ball.position.x += ballx;
+			ball.position.y += bally;
+			console.log("bounce ball");
+		}
+		//Player loses if ball gets beyond paddle.
+		else if((ball.position.x < -5.2) || (ball.position.x > 5.2))
+		{
+			lose();
+		}
+		//Runs with the default values or new saved speed values from the above equations.
+		else
+        {
+			ball.position.x += ballx; 
+			ball.position.y += bally;
+			console.log("start ball");
+        }
+    }
+	//Holds and helps animate the game objects.
+	var animateGame = function()
+	{
+		// Call animateGame again in about 1/60 of a second
+		requestAnimationFrame(animateGame);
+		
+		//Get the scene and its objects, the spheres and two rectangles.
+		var scene = gameState.scene;
+		ball = scene;
+		ball = scene.getObjectByName("ball", true);	
+		rectLeft = scene;
+		rectLeft = scene.getObjectByName("leftRect", true);	
+		rectRight = scene;
+		rectRight = scene.getObjectByName("rightRect", true);	
+		//Starts moving the ball and repeats movement every frame to animate.
+		moveBall(ball, rectRight, rectLeft);
+		//alert("Canvas height: " + canvas.height);
+		//The games ends after one minute.
+		timer = setTimeout(finish, 60000);
+		//Starts engine animation
+		startGameLoop();
+	}
+	//Loads the game and its objects.
+	window.onload = function()
+	{
+		// Start engine in full screen mode (really just full browswer)
+		engine.DEBUG = false;
+		//Sets the canvas and controls for the game and starts music.
+		canvas = document.getElementById("canvas");
+		initEngine(canvas);
+		gameState.onKeyDown = onKeyDown;
+		gameState.onKeyUp = onKeyUp;
+		gameState.score = 0;
+		var music = document.getElementById("music");
+		music.play();
+		// Parse the scene and start the game loop
+		parseScene(pongObjects);
+		animateGame();
+	}
+	
+//----------------------------------------------------------------------//
+// COLLISION DETECTION AND ENDING
+//----------------------------------------------------------------------//
+	
+	//Creates and returns the objects as a box3 object for collision detection purposes.
+	var getCollisionBounds = function(object)
+    {
+        var bbox = new THREE.Box3().setFromObject(object);
+		return bbox;
+    }
+	//Checks for collisions.
+	var collision = function(rectangle, sphere)
+    {
+		//Gets the collision boundaries of the ball and paddle tested.
+		var sphere = getCollisionBounds(sphere);
+		//alert("collision!\nrect x: " + rectangle.position.x + "\nrect y: " + rectangle.position.y + "\n\nsphere x min: " + sphere.min.x + "\nsphere y min: " + sphere.min.y);
+        var rect = getCollisionBounds(rectangle);
+		//If the paddle and ball intersect, the it returns true and an equation in moveBall is used.
+		if(rect.intersectsBox(sphere)) return true;
+		//If it is not true, moveBall's current speed values are not changed.
+        return false;
+    }
+
+	//Both functions activate the clear timer and event listeners, stop the ball, change the message, and reload the screen to restart the game.
+	var finish = function(end)
+    {
+		var points = document.getElementById("scoreboard");
+		points.innerHTML = "You win! Score: " + gameState.score;
+		clearInterval(timer);
+		window.removeEventListener("keydown", onKeyDown);
+		window.removeEventListener("keyup", onKeyUp);
+		var refresh = setTimeout(reload, 2000); 
+		return true;
+    }
+	var lose = function()
+    {
+		var points = document.getElementById("scoreboard");
+		points.innerHTML = "You lost!";
+		ballSpeedX = 0.0;
+		ballSpeedY = 0.0;
+		clearInterval(timer);
+		window.removeEventListener("keydown", onKeyDown);
+		window.removeEventListener("keyup", onKeyUp);
+		var refresh = setTimeout(reload, 1000); 
+		return true;
+    }
+	
+	//Reloads the screen to restart the game.
+	var reload = function()
+    {
+		location.reload();
+    }
+		
+	
+
+//----------------------------------------------------------------------//
+// CONTROL SCRIPTS
+//----------------------------------------------------------------------//
+	//Down keys move the two paddles.
+	var onKeyDown = function(event)
+	{
+		console.log("Down");
+		if(event.keyCode == 38)
+		{
+			//Up Movement, rightRect
+			moveRectUp(rectRight);
+			console.log("right move");
+		}
+		if(event.keyCode == 40)
+		{
+			//Down Movement, rightRect
+			moveRectDown(rectRight)
+			console.log("right move");
+		}
+		
+		if(event.keyCode == 65)
+		{
+			//Up Movement, leftRect
+			moveRectUp(rectLeft);
+			console.log("left move");
+		}
+		if(event.keyCode == 90)
+		{
+			//Down Movement, leftRect
+			moveRectDown(rectLeft)
+			console.log("left move");
+		}
+	}
+	//Lifting up from keys stops the paddles from moving.
+	var onKeyUp = function(event)
+	{
+		console.log("Up");
+		if((event.keyCode == 38) || (event.keyCode == 40))
+		{
+			//Up Movement, rightRect
+			rectRight.position.y += 0.0; 
+		}
+		
+		if((event.keyCode == 65) || (event.keyCode == 90))
+		{
+			//Up Movement, rightRect
+			rectLeft.position.y += 0.0; 
+		}
+	}
+
+</script>
+
+</body>
+</html>
